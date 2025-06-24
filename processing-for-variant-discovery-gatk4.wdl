@@ -73,6 +73,15 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
     Int agg_medium_disk = 300
     Int agg_large_disk = 400
 
+    # --- ADDED THESE NEW TASK-SPECIFIC INPUTS ---
+    Float GetBwaVersion_mem_gb = 1
+    Int   GetBwaVersion_disk_size = 10
+    Float SamToFastqAndBwaMem_mem_gb = 14
+    Int   SamToFastqAndBwaMem_disk_size = 200 # Defaulted to original 
+    Float CreateSequenceGroupingTSV_mem_gb = 2
+    Int   CreateSequenceGroupingTSV_disk_size = 10
+    # end
+
     Int preemptible_tries = 3
   }
     String base_file_name = sample_name + "." + ref_name
@@ -85,7 +94,9 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
     input: 
       docker_image = gotc_docker,
       bwa_path = gotc_path,
-      preemptible_tries = preemptible_tries
+      preemptible_tries = preemptible_tries,
+      mem_size_gb = GetBwaVersion_mem_gb,          # <-- CHANGE THIS
+      disk_size = GetBwaVersion_disk_size          # <-- ADD THIS
   }
 
   # Align flowcell-level unmapped input bams in parallel
@@ -112,7 +123,8 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
         docker_image = gotc_docker,
         bwa_path = gotc_path,
         gotc_path = gotc_path,
-        disk_size = flowcell_medium_disk,
+        disk_size = SamToFastqAndBwaMem_disk_size, # <-- CHANGE THIS
+        mem_size_gb = SamToFastqAndBwaMem_mem_gb,  # <-- ADD THIS
         preemptible_tries = preemptible_tries,
         compression_level = compression_level
      }
@@ -255,7 +267,8 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
 # Get version of BWA
 task GetBwaVersion {
   input {
-    Float mem_size_gb = 1
+    Float mem_size_gb              # <-- CHANGE THIS (remove default)
+    Int disk_size                  # <-- ADD THIS
     Int preemptible_tries
     String docker_image
     String bwa_path
@@ -272,6 +285,7 @@ task GetBwaVersion {
     preemptible: preemptible_tries
     docker: docker_image
     memory: "~{mem_size_gb} GiB"
+    disks: "local-disk " + disk_size + " HDD" # <-- ADD THIS
   }
   output {
     String version = read_string(stdout())
@@ -297,7 +311,7 @@ task SamToFastqAndBwaMem {
     File ref_pac
     File ref_sa
 
-    Float mem_size_gb = 14
+    Float mem_size_gb              # <-- CHANGE THIS (remove default)
     String num_cpu = 16
 
     Int compression_level
