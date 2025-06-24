@@ -1,4 +1,4 @@
-# gatk4-data-processing
+# gatk4-data-processing 
 
 ### Purpose :
 Workflows for processing high-throughput sequencing data for variant discovery with GATK4 and related tools.
