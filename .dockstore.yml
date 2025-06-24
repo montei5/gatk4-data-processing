@@ -1,7 +1,6 @@
 version: 1.2
 workflows:
-  - name: gatk4-preprocessing-complete
+  - name: gatk4-preprocessing-final
     subclass: WDL
     primaryDescriptorPath: /processing-for-variant-discovery-gatk4.wdl
-    testParameterFiles:
-      - /test_data/pre-processing-for-variant-discovery-gatk4-test-data.json
+
