@@ -1,7 +1,7 @@
 version 1.0
 
-### NOTE SHOWING CHANGED
-## Copyright Broad Institute, 2021
+# NOTE SHOWING CHANGED
+## Copyright Broad Institute, 2019
 ## 
 ## This WDL pipeline implements data pre-processing according to the GATK Best Practices.  
 ##
@@ -25,7 +25,8 @@ version 1.0
 ## - Python 2.7
 ##
 ## Cromwell version support 
-## - Successfully tested on v59
+## - Successfully tested on v37
+## - Does not work on versions < v23 due to output syntax
 ##
 ## Runtime parameters are optimized for Broad's Google Cloud Platform implementation.
 ##
@@ -48,12 +49,7 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
     File ref_fasta
     File ref_fasta_index
     File ref_dict
-    File? ref_alt
-    File ref_sa 
-    File ref_ann
-    File ref_bwt
-    File ref_pac
-    File ref_amb
+
     File dbSNP_vcf
     File dbSNP_vcf_index
     Array[File] known_indels_sites_VCFs
@@ -62,9 +58,9 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
     String bwa_commandline = "bwa mem -K 100000000 -p -v 3 -t 16 -Y $bash_ref_fasta"
     Int compression_level = 5
   
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.0.0"
+    String gatk_docker = "broadinstitute/gatk:4.1.8.1"
     String gatk_path = "/gatk/gatk"
-    String gotc_docker = "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.7-1603303710"
+    String gotc_docker = "broadinstitute/genomes-in-the-cloud:2.3.1-1512499786"
     String gotc_path = "/usr/gitc/"
     String python_docker = "python:2.7"  
 
@@ -73,15 +69,6 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
     Int agg_small_disk = 200
     Int agg_medium_disk = 300
     Int agg_large_disk = 400
-
-    # --- ADDED THESE NEW TASK-SPECIFIC INPUTS ---
-    Float GetBwaVersion_mem_gb = 1
-    Int   GetBwaVersion_disk_size = 10
-    Float SamToFastqAndBwaMem_mem_gb = 14
-    Int   SamToFastqAndBwaMem_disk_size = 200 # Defaulted to original 
-    Float CreateSequenceGroupingTSV_mem_gb = 2
-    Int   CreateSequenceGroupingTSV_disk_size = 10
-    # end
 
     Int preemptible_tries = 3
   }
@@ -95,9 +82,7 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
     input: 
       docker_image = gotc_docker,
       bwa_path = gotc_path,
-      preemptible_tries = preemptible_tries,
-      mem_size_gb = GetBwaVersion_mem_gb,          # <-- CHANGE THIS
-      disk_size = GetBwaVersion_disk_size          # <-- ADD THIS
+      preemptible_tries = preemptible_tries
   }
 
   # Align flowcell-level unmapped input bams in parallel
@@ -115,17 +100,10 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
         ref_fasta = ref_fasta,
         ref_fasta_index = ref_fasta_index,
         ref_dict = ref_dict,
-        ref_alt = ref_alt,
-        ref_sa = ref_sa,
-        ref_ann = ref_ann,
-        ref_bwt = ref_bwt,
-        ref_pac = ref_pac,
-        ref_amb = ref_amb,
         docker_image = gotc_docker,
         bwa_path = gotc_path,
         gotc_path = gotc_path,
-        disk_size = SamToFastqAndBwaMem_disk_size, # <-- CHANGE THIS
-        mem_size_gb = SamToFastqAndBwaMem_mem_gb,  # <-- ADD THIS
+        disk_size = flowcell_medium_disk,
         preemptible_tries = preemptible_tries,
         compression_level = compression_level
      }
@@ -268,8 +246,7 @@ workflow PreProcessingForVariantDiscovery_GATK4 {
 # Get version of BWA
 task GetBwaVersion {
   input {
-    Float mem_size_gb              # <-- CHANGE THIS (remove default)
-    Int disk_size                  # <-- ADD THIS
+    Float mem_size_gb = 1
     Int preemptible_tries
     String docker_image
     String bwa_path
@@ -286,7 +263,6 @@ task GetBwaVersion {
     preemptible: preemptible_tries
     docker: docker_image
     memory: "~{mem_size_gb} GiB"
-    disks: "local-disk " + disk_size + " HDD" # <-- ADD THIS
   }
   output {
     String version = read_string(stdout())
@@ -312,7 +288,7 @@ task SamToFastqAndBwaMem {
     File ref_pac
     File ref_sa
 
-    Float mem_size_gb              # <-- CHANGE THIS (remove default)
+    Float mem_size_gb = 14
     String num_cpu = 16
 
     Int compression_level
@@ -485,7 +461,7 @@ task MarkDuplicates {
     String docker_image
     String gatk_path
   }
-    Int command_mem_gb = ceil(mem_size_gb) - 12  ### changed from - 2 to -12
+    Int command_mem_gb = ceil(mem_size_gb) - 12 ### CHANGED
  # Task is assuming query-sorted input so that the Secondary and Supplementary reads get marked correctly.
  # This works because the output of BWA is query-grouped and therefore, so is the output of MergeBamAlignment.
  # While query-grouped isn't actually query-sorted, it's good enough for MarkDuplicates with ASSUME_SORT_ORDER="queryname"
