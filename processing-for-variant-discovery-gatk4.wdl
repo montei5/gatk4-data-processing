@@ -484,7 +484,7 @@ task MarkDuplicates {
     String docker_image
     String gatk_path
   }
-    Int command_mem_gb = ceil(mem_size_gb) - 2
+    Int command_mem_gb = ceil(mem_size_gb) - 12  ### changed from - 2 to -12
  # Task is assuming query-sorted input so that the Secondary and Supplementary reads get marked correctly.
  # This works because the output of BWA is query-grouped and therefore, so is the output of MergeBamAlignment.
  # While query-grouped isn't actually query-sorted, it's good enough for MarkDuplicates with ASSUME_SORT_ORDER="queryname"
